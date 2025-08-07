@@ -1,1 +1,34 @@
-name: Deplopy python app to aws ec2 via docker
+name: Deploy Python App to AWS Linux EC2 via Docker
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Copy code to EC2
+      run: |
+        rsync -avz -e "ssh -i ~/.ssh/id_rsa" --exclude '.git*' . ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/my-python-app/
+
+    - name: Deploy with Docker on EC2
+      run: |
+        ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+        cd ~/my-python-app
+        docker stop flask-app || true
+        docker rm flask-app || true
+        docker build -t flask-app .
+        docker run -d --name flask-app -p 80:5000 flask-app
+        EOF
