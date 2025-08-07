@@ -2,7 +2,7 @@ name: Deploy Python App to AWS Linux EC2 via Docker
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   deploy:
